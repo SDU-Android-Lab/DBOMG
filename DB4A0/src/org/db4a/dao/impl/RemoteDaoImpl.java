@@ -18,12 +18,13 @@ import org.db4a.dao.BaseDao;
 import org.db4a.util.RemoteDBHelper;
 import org.db4a.util.TableHelper;
 
+import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 public class RemoteDaoImpl<T> implements BaseDao<T> {
 	private String tableName;
 	private String idColumn;
-	private boolean isAutoId=false;
+	private boolean isAutoId = false;
 	private Class<T> clazz;
 	private List<Field> allFields;
 	RemoteDBHelper rdb;
@@ -44,8 +45,8 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 			if (field.isAnnotationPresent(Id.class)) {
 				Column column = (Column) field.getAnnotation(Column.class);
 				this.idColumn = column.name();
-				Id id=(Id)field.getAnnotation(Id.class);
-				isAutoId=id.isAuto();
+				Id id = (Id) field.getAnnotation(Id.class);
+				isAutoId = id.isAuto();
 				break;
 			}
 		}
@@ -69,7 +70,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 			for (int i = 1; i <= list.size(); i++) {
 				stmt.setObject(i, list.get(i - 1));
 			}
-			flag=stmt.executeUpdate();
+			flag = stmt.executeUpdate();
 			if (con != null) {
 				con.close();
 			}
@@ -81,18 +82,68 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 	}
 
 	public void delete(int id) {
-		// TODO Auto-generated method stub
-
+		String sql="DELETE FROM "+tableName+" WHERE "+idColumn+" ='"+id+"'";
+		execSql(sql, null);
 	}
 
 	public void delete(Integer... ids) {
-		// TODO Auto-generated method stub
-
+		if (ids.length > 0) {
+			StringBuffer sb = new StringBuffer();
+			for (int i = 0; i < ids.length; i++) {
+				sb.append('?').append(',');
+			}
+			sb.deleteCharAt(sb.length() - 1);
+			String sql = "delete from " + this.tableName + " where "
+					+ this.idColumn + " in (" + sb + ")";
+			Log.d("db4a","[delete]: " + sql);
+			execSql(sql, (Object[]) ids);
+		}
 	}
 
 	public void update(T entity) {
-		// TODO Auto-generated method stub
+		if (entity == null) {
+			return;
+		}
+		String sql = getUpdateSql(entity);
+		execSql(sql, null);
+	}
 
+	private String getUpdateSql(T entity) {
+		StringBuffer sql = new StringBuffer();
+		  sql.append("UPDATE ");
+		  sql.append(tableName);
+		  sql.append(" SET ");
+		  String id="";
+		  for (int i = 0; i < allFields.size(); i++) {
+			Field field = allFields.get(i);
+			Column column = (Column) field.getAnnotation(Column.class);
+			field.setAccessible(true);
+			if (column.name().equals(idColumn)) {
+				try {
+					id=""+ field.get(entity);
+				} catch (IllegalArgumentException e) {
+					e.printStackTrace();
+				} catch (IllegalAccessException e) {
+					e.printStackTrace();
+				}
+				continue;
+			}
+		   sql.append(column.name());
+		   try {
+			sql.append("='"+field.get(entity)+"'");
+		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+		} catch (IllegalAccessException e) {
+			e.printStackTrace();
+		}
+		   if (i < allFields.size() - 1) {
+		    sql.append(",");
+		   }
+		  }
+		  sql.append(" WHERE ");
+		  sql.append(idColumn);
+		  sql.append("="+id);
+		  return sql.toString();
 	}
 
 	public T get(int id) {
@@ -253,7 +304,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 		for (Field field : this.allFields) {
 			if (field.isAnnotationPresent(Column.class)) {
 				field.setAccessible(true);
-				if(field.isAnnotationPresent(Id.class)&&isAutoId){
+				if (field.isAnnotationPresent(Id.class) && isAutoId) {
 					continue;
 				}
 				try {
@@ -323,7 +374,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 			Column column = (Column) field.getAnnotation(Column.class);
 			field.setAccessible(true);
 			String cname = column.name();
-			if(cname.equals(idColumn)&&isAutoId){
+			if (cname.equals(idColumn) && isAutoId) {
 				continue;
 			}
 			sql.append("" + cname + "");
@@ -338,7 +389,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 			Column column = (Column) field.getAnnotation(Column.class);
 			field.setAccessible(true);
 			String cname = column.name();
-			if(cname.equals(idColumn)&&isAutoId){
+			if (cname.equals(idColumn) && isAutoId) {
 				continue;
 			}
 			sql.append("?");
@@ -362,7 +413,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 		int index = 0;
 		while (sb.indexOf("?") > 0 && index < selectionArgs.length) {
 			sb.replace(sb.indexOf("?"), sb.indexOf("?") + 1, "'"
-					+ selectionArgs[0] + "'");
+					+ selectionArgs[index] + "'");
 			index++;
 		}
 		sb.append(" ");

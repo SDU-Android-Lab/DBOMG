@@ -18,7 +18,9 @@ public class MainActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 		//insert.start();
-		select.start();
+		//select.start();
+		//update.start();
+		//delete.start();
 	}
 
 	final Thread select=new Thread() {
@@ -30,7 +32,6 @@ public class MainActivity extends Activity {
 				for(Euser u:uRdao.find()){
 					show("remote",u);
 				}
-				show("remote",uRdao.get(1));
 			} catch (Exception e) {
 				Log.e("qq", "error");
 				e.printStackTrace();
@@ -48,6 +49,7 @@ public class MainActivity extends Activity {
 				s2.setName("s2");
 				s2.setPwd("pwd2");
 				uRdao.insert(s2);
+				select.start();
 			} catch (Exception e) {
 				Log.e("qq", "error");
 				e.printStackTrace();
@@ -55,10 +57,45 @@ public class MainActivity extends Activity {
 			Log.e("qq", "finish");
 		}
 	};
+	final Thread update=new Thread() {
+		public void run() {
+			RemoteDBHelper rdb = new RemoteDBHelper("211.87.227.10",
+					"ebag", "sa", "@!!*&@@&%^");
+			try {
+				EuserRDao uRdao = new EuserRDao(rdb);
+				Euser s2=new Euser();
+				s2.setId(3);
+				s2.setName("student2");
+				s2.setPwd("pwd2");
+				uRdao.update(s2);
+				select.start();
+			} catch (Exception e) {
+				Log.e("qq", "error");
+				e.printStackTrace();
+			}
+			Log.e("qq", "finish");
+		}
+	};
+	final Thread delete=new Thread() {
+		public void run() {
+			RemoteDBHelper rdb = new RemoteDBHelper("211.87.227.10",
+					"ebag", "sa", "@!!*&@@&%^");
+			try {
+				EuserRDao uRdao = new EuserRDao(rdb);
+				uRdao.delete(6);
+			} catch (Exception e) {
+				Log.e("qq", "error");
+				e.printStackTrace();
+			}
+			select.start();
+			Log.e("qq", "finish");
+		}
+	};
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
 		try {
+			if(sqliteDb!=null)
 			sqliteDb.close();
 		} finally {
 
