@@ -10,7 +10,7 @@ import org.db4a.annotation.Table;
 public class Euser implements Serializable{
 
 	private static final long serialVersionUID = 6538222785549283466L;
-	@Id
+	@Id(isAuto=true)
 	@Column(name="Id")
 	private Integer id;
 	@Column(name="name")

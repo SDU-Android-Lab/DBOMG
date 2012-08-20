@@ -3,6 +3,7 @@ package org.db4a.dao.impl;
 import java.lang.reflect.Field;
 import java.sql.Blob;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -22,6 +23,7 @@ import android.util.Log;
 public class RemoteDaoImpl<T> implements BaseDao<T> {
 	private String tableName;
 	private String idColumn;
+	private boolean isAutoId=false;
 	private Class<T> clazz;
 	private List<Field> allFields;
 	RemoteDBHelper rdb;
@@ -42,6 +44,8 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 			if (field.isAnnotationPresent(Id.class)) {
 				Column column = (Column) field.getAnnotation(Column.class);
 				this.idColumn = column.name();
+				Id id=(Id)field.getAnnotation(Id.class);
+				isAutoId=id.isAuto();
 				break;
 			}
 		}
@@ -49,9 +53,31 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 				+ " idColumn:" + this.idColumn);
 	}
 
+	@SuppressWarnings("rawtypes")
 	public long insert(T entity) {
-		// TODO Auto-generated method stub
-		return 0;
+		long flag = -1L;
+		if (entity == null) {
+			return flag;
+		}
+		String sql = getInsertSQL();
+		Log.i("db4a", sql);
+		List list = getValueList(entity);
+		Connection con = null;
+		try {
+			con = this.rdb.getConnection();
+			PreparedStatement stmt = con.prepareStatement(sql);
+			for (int i = 1; i <= list.size(); i++) {
+				stmt.setObject(i, list.get(i - 1));
+			}
+			flag=stmt.executeUpdate();
+			if (con != null) {
+				con.close();
+			}
+		} catch (Exception e) {
+			Log.e("db4a", "[rawQuery] from DB Exception");
+			e.printStackTrace();
+		}
+		return flag;
 	}
 
 	public void delete(int id) {
@@ -81,22 +107,53 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 	}
 
 	public List<T> rawQuery(String sql, String[] selectionArgs) {
-		// TODO Auto-generated method stub
-		return null;
+		String s = getCommonSQL(sql, selectionArgs);
+		List<T> lst = new ArrayList<T>();
+		Log.d("db4a", s);
+		Connection con = null;
+		try {
+			con = this.rdb.getConnection();
+			Statement stmt = con.createStatement();
+			ResultSet rset = stmt.executeQuery(s);
+			getListFromResultSet(lst, rset);
+			if (con != null) {
+				con.close();
+			}
+		} catch (Exception e) {
+			Log.e("db4a", "[rawQuery] from DB Exception");
+			e.printStackTrace();
+		}
+		return lst;
 	}
 
 	public List<T> find() {
 		return find(null, null, null, null, null, null, null);
 	}
 
+	@Deprecated
+	/**
+	 * not support in this vision
+	 */
 	public List<Map<String, String>> query2MapList(String sql,
 			String[] selectionArgs) {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	public void execSql(String sql, Object[] selectionArgs) {
-
+		String s = getCommonSQL(sql, selectionArgs);
+		Log.e("db4a", s);
+		Connection con = null;
+		try {
+			con = this.rdb.getConnection();
+			Statement stmt = con.createStatement();
+			stmt.execute(s);
+			if (con != null) {
+				con.close();
+			}
+		} catch (Exception e) {
+			Log.e("db4a", "[execSql] from DB Exception");
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -104,21 +161,21 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 			String[] selectionArgs, String groupBy, String having,
 			String orderBy, String limit) {
 		String sql = getSelectSQL();
-		sql=sql.replace("*", getColumnsSQL(columns));
-		sql+=" WHERE "+getSelectionArgs(selection, selectionArgs);
-		sql+=getPariBySQL("GROUP BY", groupBy);
-		sql+=getPariBySQL("HAVEING", having);
-		sql+=getPariBySQL("ORDER BY", orderBy);
-		sql+=getPariBySQL("", limit);
-		if(sql.endsWith(" WHERE ")){
-			sql=sql.substring(0, sql.lastIndexOf(" WHERE"))+";";
+		sql = sql.replace("*", getColumnsSQL(columns));
+		sql += " WHERE " + getSelectionArgs(selection, selectionArgs);
+		sql += getPariBySQL("GROUP BY", groupBy);
+		sql += getPariBySQL("HAVEING", having);
+		sql += getPariBySQL("ORDER BY", orderBy);
+		sql += getPariBySQL("", limit);
+		if (sql.endsWith(" WHERE ")) {
+			sql = sql.substring(0, sql.lastIndexOf(" WHERE")) + ";";
 		}
 		Log.i("db4a", sql);
 		List<T> list = new ArrayList<T>();
 		Connection con = null;
 		try {
 			con = this.rdb.getConnection();
-			 Statement stmt = con.createStatement();
+			Statement stmt = con.createStatement();
 			ResultSet rst = stmt.executeQuery(sql);
 			getListFromResultSet(list, rst);
 			if (con != null) {
@@ -144,14 +201,15 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 
 					field.setAccessible(true);
 					Class<?> fieldType = field.getType();
-					int c =-1;
-					try{
-						c=rs.findColumn(column.name());
+					int c = -1;
+					try {
+						c = rs.findColumn(column.name());
 					} catch (SQLException e) {
 						continue;
-					}finally{
-						
-					}if (c < 0) {
+					} finally {
+
+					}
+					if (c < 0) {
 						continue; // 如果不存则循环下个属性值
 					} else if ((Integer.TYPE == fieldType)
 							|| (Integer.class == fieldType)) {
@@ -188,7 +246,28 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 			list.add((T) entity);
 		}
 	}
-	
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private List getValueList(T obj) {
+		List res = new ArrayList();
+		for (Field field : this.allFields) {
+			if (field.isAnnotationPresent(Column.class)) {
+				field.setAccessible(true);
+				if(field.isAnnotationPresent(Id.class)&&isAutoId){
+					continue;
+				}
+				try {
+					res.add(field.get(obj));
+				} catch (IllegalArgumentException e) {
+					e.printStackTrace();
+				} catch (IllegalAccessException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return res;
+	}
+
 	private String getSelectSQL() {
 		StringBuffer sql = new StringBuffer();
 		sql.append("SELECT * FROM ");
@@ -204,47 +283,86 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 		for (String c : columns) {
 			sql.append(c + ",");
 		}
-		return sql.substring(0, sql.length()-1);
+		return sql.substring(0, sql.length() - 1);
 	}
-	
-	private String getSelectionArgs(String selection,String[] selectionArgs){
-		if(selection==null||selection.length()==0){
+
+	private String getSelectionArgs(String selection, String[] selectionArgs) {
+		if (selection == null || selection.length() == 0) {
 			return "";
 		}
-		StringBuffer sb=new StringBuffer();
-		if(selectionArgs==null||selectionArgs.length==0){
+		StringBuffer sb = new StringBuffer();
+		if (selectionArgs == null || selectionArgs.length == 0) {
 			return selection;
 		}
 		sb.append(selection);
-		int index=0;
-		while(sb.indexOf("?")>0&&index<selectionArgs.length){
-			sb.replace(sb.indexOf("?"), sb.indexOf("?")+1, "'"+selectionArgs[0]+"'");
+		int index = 0;
+		while (sb.indexOf("?") > 0 && index < selectionArgs.length) {
+			sb.replace(sb.indexOf("?"), sb.indexOf("?") + 1, "'"
+					+ selectionArgs[0] + "'");
 			index++;
 		}
 		sb.append(" ");
 		return sb.toString().replace("?", "*");
 	}
-	
-	private String getPariBySQL(String SQL,String value){
-		if(value==null||value.length()==0){
+
+	private String getPariBySQL(String SQL, String value) {
+		if (value == null || value.length() == 0) {
 			return "";
-		}else {
-			return SQL+" "+value+" ";
+		} else {
+			return SQL + " " + value + " ";
 		}
 	}
-	
-	private String getCommonSQL(String sql,Object[] selectionArgs){
-		if(sql==null||sql.length()==0){
+
+	private String getInsertSQL() {
+		StringBuffer sql = new StringBuffer();
+		sql.append("INSERT INTO ");
+		sql.append(tableName);
+		sql.append(" (");
+		for (int i = 0; i < allFields.size(); i++) {
+			Field field = allFields.get(i);
+			Column column = (Column) field.getAnnotation(Column.class);
+			field.setAccessible(true);
+			String cname = column.name();
+			if(cname.equals(idColumn)&&isAutoId){
+				continue;
+			}
+			sql.append("" + cname + "");
+			if (i < allFields.size() - 1) {
+				sql.append(",");
+			}
+		}
+		sql.append(") ");
+		sql.append(" VALUES(");
+		for (int i = 0; i < allFields.size(); i++) {
+			Field field = allFields.get(i);
+			Column column = (Column) field.getAnnotation(Column.class);
+			field.setAccessible(true);
+			String cname = column.name();
+			if(cname.equals(idColumn)&&isAutoId){
+				continue;
+			}
+			sql.append("?");
+			if (i < allFields.size() - 1) {
+				sql.append(",");
+			}
+		}
+		sql.append(") ");
+		return sql.toString();
+	}
+
+	private String getCommonSQL(String sql, Object[] selectionArgs) {
+		if (sql == null || sql.length() == 0) {
 			return "";
 		}
-		StringBuffer sb=new StringBuffer();
-		if(selectionArgs==null||selectionArgs.length==0){
+		StringBuffer sb = new StringBuffer();
+		if (selectionArgs == null || selectionArgs.length == 0) {
 			return sql;
 		}
 		sb.append(sql);
-		int index=0;
-		while(sb.indexOf("?")>0&&index<selectionArgs.length){
-			sb.replace(sb.indexOf("?"), sb.indexOf("?")+1, "'"+selectionArgs[0]+"'");
+		int index = 0;
+		while (sb.indexOf("?") > 0 && index < selectionArgs.length) {
+			sb.replace(sb.indexOf("?"), sb.indexOf("?") + 1, "'"
+					+ selectionArgs[0] + "'");
 			index++;
 		}
 		sb.append(" ");
