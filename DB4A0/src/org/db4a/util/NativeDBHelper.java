@@ -15,11 +15,11 @@ public abstract class NativeDBHelper extends SQLiteOpenHelper {
 	}
 
 	public void onCreate(SQLiteDatabase db) {
-		TableHelper.createTablesByClasses(db, this.modelClasses);
+		NativeTableHelper.createTablesByClasses(db, this.modelClasses);
 	}
 
 	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-		TableHelper.dropTablesByClasses(db, this.modelClasses);
+		NativeTableHelper.dropTablesByClasses(db, this.modelClasses);
 		onCreate(db);
 	}
 	public abstract void initDb();

@@ -11,7 +11,7 @@ import org.db4a.annotation.Column;
 import org.db4a.annotation.Id;
 import org.db4a.annotation.Table;
 import org.db4a.dao.BaseDao;
-import org.db4a.util.TableHelper;
+import org.db4a.util.NativeTableHelper;
 
 import android.content.ContentValues;
 import android.database.Cursor;
@@ -21,7 +21,7 @@ import android.util.Log;
 
 
 public class NativeDaoImpl<T> implements BaseDao<T> {
-	//private String TAG = "AHibernate";
+	private static final String TAG = "db4a";
 	private SQLiteOpenHelper dbHelper;
 	private String tableName;
 	private String idColumn;
@@ -40,7 +40,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 		}
 
 		// 加载所有字段
-		this.allFields = TableHelper.joinFields(this.clazz.getDeclaredFields(),
+		this.allFields = NativeTableHelper.joinFields(this.clazz.getDeclaredFields(),
 				this.clazz.getSuperclass().getDeclaredFields());
 
 		// 找到主键
@@ -52,7 +52,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 			}
 		}
 
-		Log.d("db4a", "clazz:" + this.clazz + " tableName:" + this.tableName
+		Log.d(TAG, "clazz:" + this.clazz + " tableName:" + this.tableName
 				+ " idColumn:" + this.idColumn);
 	}
 
@@ -63,7 +63,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 	public T get(int id) {
 		String selection = this.idColumn + " = ?";
 		String[] selectionArgs = { Integer.toString(id) };
-		Log.d("db4a","[get]: select * from " + this.tableName + " where "
+		Log.d(TAG,"[get]: select * from " + this.tableName + " where "
 				+ this.idColumn + " = '" + id + "'");
 		List<T> list = find(null, selection, selectionArgs, null, null, null,
 				null);
@@ -74,7 +74,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 	}
 
 	public List<T> rawQuery(String sql, String[] selectionArgs) {
-		Log.d("db4a", "[rawQuery]: " + sql);
+		Log.d(TAG, "[rawQuery]: " + sql);
 
 		List<T> list = new ArrayList<T>();
 		SQLiteDatabase db = null;
@@ -85,7 +85,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 
 			getListFromCursor(list, cursor);
 		} catch (Exception e) {
-			Log.e("db4a","[rawQuery] from DB Exception.");
+			Log.e(TAG,"[rawQuery] from DB Exception.");
 			e.printStackTrace();
 		} finally {
 			if (cursor != null) {
@@ -100,7 +100,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 	}
 
 	public boolean isExist(String sql, String[] selectionArgs) {
-		Log.d("db4a","[isExist]: " + sql);
+		Log.d(TAG,"[isExist]: " + sql);
 
 		SQLiteDatabase db = null;
 		Cursor cursor = null;
@@ -111,7 +111,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 				return true;
 			}
 		} catch (Exception e) {
-			Log.e("db4a", "[isExist] from DB Exception.");
+			Log.e(TAG, "[isExist] from DB Exception.");
 			e.printStackTrace();
 		} finally {
 			if (cursor != null) {
@@ -131,7 +131,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 	public List<T> find(String[] columns, String selection,
 			String[] selectionArgs, String groupBy, String having,
 			String orderBy, String limit) {
-		Log.d("db4a","[find]");
+		Log.d(TAG,"[find]");
 
 		List<T> list = new ArrayList<T>();
 		SQLiteDatabase db = null;
@@ -143,7 +143,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 
 			getListFromCursor(list, cursor);
 		} catch (Exception e) {
-			Log.e("db4a","[find] from DB Exception");
+			Log.e(TAG,"[find] from DB Exception");
 			e.printStackTrace();
 		} finally {
 			if (cursor != null) {
@@ -210,7 +210,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 	}
 
 	public long insert(T entity) {
-		Log.d("db4a","[insert]: inset into " + this.tableName + " "
+		Log.d(TAG,"[insert]: inset into " + this.tableName + " "
 				+ entity.toString());
 		SQLiteDatabase db = null;
 		try {
@@ -220,7 +220,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 			long row = db.insert(this.tableName, null, cv);
 			return row;
 		} catch (Exception e) {
-			Log.e("db4a", "[insert] into DB Exception.");
+			Log.e(TAG, "[insert] into DB Exception.");
 			e.printStackTrace();
 		} finally {
 			if (db != null) {
@@ -236,7 +236,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 		String where = this.idColumn + " = ?";
 		String[] whereValue = { Integer.toString(id) };
 
-		Log.d("db4a","[delete]: delelte from " + this.tableName + " where "
+		Log.d(TAG,"[delete]: delelte from " + this.tableName + " where "
 				+ where.replace("?", String.valueOf(id)));
 
 		db.delete(this.tableName, where, whereValue);
@@ -254,7 +254,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 			String sql = "delete from " + this.tableName + " where "
 					+ this.idColumn + " in (" + sb + ")";
 
-			Log.d("db4a","[delete]: " + sql);
+			Log.d(TAG,"[delete]: " + sql);
 
 			db.execSQL(sql, (Object[]) ids);
 			db.close();
@@ -273,13 +273,13 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 			int id = Integer.parseInt(cv.get(this.idColumn).toString());
 			cv.remove(this.idColumn);
 
-			Log.d("db4a","[update]: update " + this.tableName + " where "
+			Log.d(TAG,"[update]: update " + this.tableName + " where "
 					+ where.replace("?", String.valueOf(id)));
 
 			String[] whereValue = { Integer.toString(id) };
 			db.update(this.tableName, cv, where, whereValue);
 		} catch (Exception e) {
-			Log.e("db4a","[update] DB Exception.");
+			Log.e(TAG,"[update] DB Exception.");
 			e.printStackTrace();
 		} finally {
 			if (db != null)
@@ -304,7 +304,6 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 					&& (field.isAnnotationPresent(Id.class))) {
 				continue;
 			}
-			//TODO changed by sdujq
 			if(fieldValue instanceof byte[]){
 				cv.put(column.name(), (byte[])fieldValue);
 			}
@@ -325,7 +324,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 	 */
 	public List<Map<String, String>> query2MapList(String sql,
 			String[] selectionArgs) {
-		Log.d("db4a","[query2MapList]: " + sql);
+		Log.d(TAG,"[query2MapList]: " + sql);
 		SQLiteDatabase db = null;
 		Cursor cursor = null;
 		List<Map<String, String>> retList = new ArrayList<Map<String, String>>();
@@ -341,7 +340,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 				retList.add(map);
 			}
 		} catch (Exception e) {
-			Log.e("db4a","[query2MapList] from DB exception");
+			Log.e(TAG,"[query2MapList] from DB exception");
 			e.printStackTrace();
 		} finally {
 			if (cursor != null) {
@@ -363,7 +362,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 	 */
 	public void execSql(String sql, Object[] selectionArgs) {
 		SQLiteDatabase db = null;
-		Log.d("db4a","[execSql]: " + sql);
+		Log.d(TAG,"[execSql]: " + sql);
 		try {
 			db = this.dbHelper.getWritableDatabase();
 			if (selectionArgs == null) {
@@ -372,7 +371,7 @@ public class NativeDaoImpl<T> implements BaseDao<T> {
 				db.execSQL(sql, selectionArgs);
 			}
 		} catch (Exception e) {
-			Log.e("db4a","[execSql] DB exception.");
+			Log.e(TAG,"[execSql] DB exception.");
 			e.printStackTrace();
 		} finally {
 			if (db != null) {

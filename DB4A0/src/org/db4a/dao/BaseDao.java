@@ -23,23 +23,9 @@ public interface BaseDao<T> {
 			String[] selectionArgs, String groupBy, String having,
 			String orderBy, String limit);
 
-	/**
-	 * 将查询的结果保存为名值对map.
-	 * 
-	 * @param sql
-	 *            查询sql
-	 * @param selectionArgs
-	 *            参数值
-	 * @return 返回的Map中的key全部是小写形式.
-	 */
 	public List<Map<String, String>> query2MapList(String sql,
 			String[] selectionArgs);
 	
-	/**
-	 * 封装执行sql代码.
-	 * @param sql
-	 * @param selectionArgs
-	 */
 	public void execSql(String sql, Object[] selectionArgs);
 
 }

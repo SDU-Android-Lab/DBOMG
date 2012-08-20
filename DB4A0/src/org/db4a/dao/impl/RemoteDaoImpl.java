@@ -16,12 +16,13 @@ import org.db4a.annotation.Id;
 import org.db4a.annotation.Table;
 import org.db4a.dao.BaseDao;
 import org.db4a.util.RemoteDBHelper;
-import org.db4a.util.TableHelper;
+import org.db4a.util.NativeTableHelper;
 
-import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 public class RemoteDaoImpl<T> implements BaseDao<T> {
+	private static final String TAG = "db4a";
+	
 	private String tableName;
 	private String idColumn;
 	private boolean isAutoId = false;
@@ -39,7 +40,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 			Table table = (Table) this.clazz.getAnnotation(Table.class);
 			this.tableName = table.name();
 		}
-		this.allFields = TableHelper.joinFields(this.clazz.getDeclaredFields(),
+		this.allFields = NativeTableHelper.joinFields(this.clazz.getDeclaredFields(),
 				this.clazz.getSuperclass().getDeclaredFields());
 		for (Field field : this.allFields) {
 			if (field.isAnnotationPresent(Id.class)) {
@@ -50,7 +51,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 				break;
 			}
 		}
-		Log.d("db4a", "clazz:" + this.clazz + " tableName:" + this.tableName
+		Log.d(TAG, "clazz:" + this.clazz + " tableName:" + this.tableName
 				+ " idColumn:" + this.idColumn);
 	}
 
@@ -61,7 +62,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 			return flag;
 		}
 		String sql = getInsertSQL();
-		Log.i("db4a", sql);
+		Log.i(TAG, sql);
 		List list = getValueList(entity);
 		Connection con = null;
 		try {
@@ -75,7 +76,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 				con.close();
 			}
 		} catch (Exception e) {
-			Log.e("db4a", "[rawQuery] from DB Exception");
+			Log.e(TAG, "[rawQuery] from DB Exception");
 			e.printStackTrace();
 		}
 		return flag;
@@ -95,7 +96,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 			sb.deleteCharAt(sb.length() - 1);
 			String sql = "delete from " + this.tableName + " where "
 					+ this.idColumn + " in (" + sb + ")";
-			Log.d("db4a","[delete]: " + sql);
+			Log.d(TAG,"[delete]: " + sql);
 			execSql(sql, (Object[]) ids);
 		}
 	}
@@ -160,7 +161,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 	public List<T> rawQuery(String sql, String[] selectionArgs) {
 		String s = getCommonSQL(sql, selectionArgs);
 		List<T> lst = new ArrayList<T>();
-		Log.d("db4a", s);
+		Log.d(TAG, s);
 		Connection con = null;
 		try {
 			con = this.rdb.getConnection();
@@ -171,7 +172,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 				con.close();
 			}
 		} catch (Exception e) {
-			Log.e("db4a", "[rawQuery] from DB Exception");
+			Log.e(TAG, "[rawQuery] from DB Exception");
 			e.printStackTrace();
 		}
 		return lst;
@@ -192,7 +193,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 
 	public void execSql(String sql, Object[] selectionArgs) {
 		String s = getCommonSQL(sql, selectionArgs);
-		Log.e("db4a", s);
+		Log.e(TAG, s);
 		Connection con = null;
 		try {
 			con = this.rdb.getConnection();
@@ -202,7 +203,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 				con.close();
 			}
 		} catch (Exception e) {
-			Log.e("db4a", "[execSql] from DB Exception");
+			Log.e(TAG, "[execSql] from DB Exception");
 			e.printStackTrace();
 		}
 	}
@@ -221,7 +222,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 		if (sql.endsWith(" WHERE ")) {
 			sql = sql.substring(0, sql.lastIndexOf(" WHERE")) + ";";
 		}
-		Log.i("db4a", sql);
+		Log.i(TAG, sql);
 		List<T> list = new ArrayList<T>();
 		Connection con = null;
 		try {
@@ -233,7 +234,7 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 				con.close();
 			}
 		} catch (Exception e) {
-			Log.e("db4a", "[find] from DB Exception");
+			Log.e(TAG, "[find] from DB Exception");
 			e.printStackTrace();
 		}
 		return list;

@@ -15,7 +15,7 @@ import org.db4a.annotation.Id;
 import org.db4a.annotation.Table;
 
 
-public class TableHelper {
+public class NativeTableHelper {
 	private static final String TAG = "db4a";
 
 	public static <T> void createTablesByClasses(SQLiteDatabase db,
@@ -40,7 +40,7 @@ public class TableHelper {
 		StringBuilder sb = new StringBuilder();
 		sb.append("CREATE TABLE ").append(tableName).append(" (");
 
-		List<Field> allFields = TableHelper
+		List<Field> allFields = NativeTableHelper
 				.joinFields(clazz.getDeclaredFields(), clazz.getSuperclass()
 						.getDeclaredFields());
 		for (Field field : allFields) {
