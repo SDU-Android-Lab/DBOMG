@@ -215,13 +215,14 @@ public class RemoteDaoImpl<T> implements BaseDao<T> {
 		String sql = getSelectSQL();
 		sql = sql.replace("*", getColumnsSQL(columns));
 		sql += " WHERE " + getSelectionArgs(selection, selectionArgs);
+
+		if (sql.endsWith(" WHERE ")) {
+			sql = sql.substring(0, sql.lastIndexOf(" WHERE"));
+		}
 		sql += getPariBySQL("GROUP BY", groupBy);
 		sql += getPariBySQL("HAVEING", having);
 		sql += getPariBySQL("ORDER BY", orderBy);
 		sql += getPariBySQL("", limit);
-		if (sql.endsWith(" WHERE ")) {
-			sql = sql.substring(0, sql.lastIndexOf(" WHERE")) + ";";
-		}
 		Log.i(TAG, sql);
 		List<T> list = new ArrayList<T>();
 		Connection con = null;
